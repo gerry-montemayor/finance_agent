@@ -7,7 +7,7 @@ import yfinance as yf
 
 from finance_tools import app
 
-_USER_ID = "gerardom1226@gmail.com"
+_USER_ID = os.environ["ARCADE_USER_ID"]
 
 
 def _arcade() -> arcadepy.Arcade:

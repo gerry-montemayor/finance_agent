@@ -2,18 +2,6 @@
 """my_server MCP server"""
 
 import sys
-from typing import Annotated
-
-import httpx
-from arcade_mcp_server import Context
-from arcade_mcp_server.auth import GitHub
-from arcade_mcp_server.metadata import (
-    Behavior,
-    Classification,
-    Operation,
-    ServiceDomain,
-    ToolMetadata,
-)
 
 from finance_tools import app
 import finance_tools.portfolio  # noqa: F401

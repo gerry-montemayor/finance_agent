@@ -8,7 +8,7 @@ import yfinance as yf
 
 from finance_tools import app
 
-_USER_ID = "gerardom1226@gmail.com"
+_USER_ID = os.environ["ARCADE_USER_ID"]
 _client = arcadepy.Arcade(api_key=os.environ["ARCADE_API_KEY"])
 
 _HOLDINGS_HEADERS = {
@@ -47,7 +47,8 @@ def _cell_value(row_data: dict, col: str) -> str:
 
 
 def _cell_num(row_data: dict, col: str) -> float:
-    val = row_data.get(col, {}).get("userEnteredValue", 0)
+    cell = row_data.get(col, {})
+    val = cell.get("effectiveValue") or cell.get("userEnteredValue", 0)
     try:
         return float(val or 0)
     except (ValueError, TypeError):
@@ -156,7 +157,7 @@ def add_holding(
     total_cost = round(shares * avg_cost, 2)
     market_value = round(shares * current_price, 2)
     gain_loss = round(market_value - total_cost, 2)
-    gain_loss_pct = round((gain_loss / total_cost * 100) if total_cost else 0, 2)
+    gain_loss_pct = round((gain_loss / total_cost) if total_cost else 0, 4)
 
     holdings_data = _get_sheet_data("Holdings")
     header_row = min(holdings_data.keys(), key=int) if holdings_data else "1"
@@ -212,10 +213,10 @@ def refresh_portfolio() -> Annotated[str, "Updated prices and gain/loss for all 
 
         stock = _fetch_price(ticker)
         price = stock["price"]
-        market_value = round(shares * price, 2)
-        total_cost = round(shares * avg_cost, 2)
-        gain_loss = round(market_value - total_cost, 2)
-        gain_loss_pct = round((gain_loss / total_cost * 100) if total_cost else 0, 2)
+        market_value = round(shares * price, 3)
+        total_cost = round(shares * avg_cost, 3)
+        gain_loss = round(market_value - total_cost, 3)
+        gain_loss_pct = round((gain_loss / total_cost) if total_cost else 0, 4)
 
         updates[row_num] = {
             "E": price, "F": market_value, "G": total_cost,
