@@ -32,6 +32,15 @@ def _search(client: arcadepy.Arcade, query: str, n_results: int = 10) -> str:
     return result.output.value or ""
 
 
+def _news_search(client: arcadepy.Arcade, query: str, n_results: int = 10) -> str:
+    result = client.tools.execute(
+        tool_name="GoogleNews.SearchNews",
+        input={"query": query, "n_results": n_results},
+        user_id=_USER_ID,
+    )
+    return result.output.value or ""
+
+
 @app.tool
 def get_stock_overview(
     ticker: Annotated[str, "Stock ticker symbol, e.g. 'AAPL'"],
@@ -41,19 +50,14 @@ def get_stock_overview(
     client = _arcade()
     ticker_upper = ticker.upper()
 
-    data = None
-    for ex in [exchange, "NASDAQ", "NYSE", "NYSE ARCA"]:
-        result = client.tools.execute(
-            tool_name="GoogleFinance.GetStockSummary",
-            input={"ticker_symbol": ticker_upper, "exchange_identifier": ex},
-            user_id=_USER_ID,
-        )
-        if result.output and result.output.value:
-            data = result.output.value
-            break
-
+    result = client.tools.execute(
+        tool_name="GoogleFinance.GetStockSummary",
+        input={"ticker_symbol": ticker_upper, "exchange_identifier": exchange},
+        user_id=_USER_ID,
+    )
+    data = result.output and result.output.value
     if not data:
-        return f"No data found for {ticker_upper}."
+        return f"No data found for {ticker_upper} on {exchange}."
 
     market = data.get("market", {})
     movement = market.get("price_movement", {})
@@ -72,7 +76,7 @@ def get_stock_overview(
 
 
 @app.tool
-def get_analyst_sentiment(
+def get_sentiment(
     ticker: Annotated[str, "Stock ticker symbol, e.g. 'AAPL'"],
 ) -> Annotated[str, "Analyst recommendations and price targets from yfinance"]:
     """Get analyst sentiment for a stock including recommendation, price targets, and consensus score."""
@@ -109,96 +113,42 @@ def get_analyst_sentiment(
 
 
 @app.tool
+async def get_news(
+    topic: Annotated[str, "News topic to search, e.g. 'stock market', 'Fed rate decision', 'inflation'"] = "stock market news today",
+) -> Annotated[str, "Recent news from MarketWatch and Google News for the given topic"]:
+    """Search Google News and scrape MarketWatch for headlines on a given topic."""
+    client = _arcade()
+
+    marketwatch_md, google_results = await asyncio.gather(
+        asyncio.to_thread(_scrape, client, "https://www.marketwatch.com/investing"),
+        asyncio.to_thread(_news_search, client, topic, 10),
+    )
+
+    sections = []
+    if len(marketwatch_md) > 200:
+        sections.append(f"## MarketWatch\n\n{marketwatch_md[:3000]}")
+    if google_results:
+        sections.append(f"## Google News: {topic}\n\n{google_results}")
+
+    return "\n\n---\n\n".join(sections) if sections else "No news found."
+
+
+@app.tool
 def get_stock_news(
     ticker: Annotated[str, "Stock ticker symbol, e.g. 'AAPL'"],
 ) -> Annotated[str, "Recent news headlines for the stock from Finviz"]:
     """Scrape Finviz for aggregated news headlines about a stock."""
     ticker_upper = ticker.upper()
-    content = _scrape(_arcade(), f"https://finviz.com/quote.ashx?t={ticker_upper}")
+    content = _scrape(_arcade(), f"https://finviz.com/search?p={ticker_upper}")
     if len(content) < 200:
         return f"No news found for {ticker_upper}."
-    return f"## Finviz News: {ticker_upper}\n\n{content[:4000]}"
-
-
-
-@app.tool
-def search_web(
-    query: Annotated[str, "Search query, e.g. 'AAPL earnings Q2 2026'"],
-    n_results: Annotated[int, "Number of results to return"] = 10,
-) -> Annotated[str, "Google search results"]:
-    """Search the web via Google and return organic results."""
-    results = _search(_arcade(), query, n_results)
-    if not results:
-        return f"No results found for '{query}'."
-    return f"## Search: {query}\n\n{results}"
-
-
-@app.tool
-async def stock_deep_research(
-    ticker: Annotated[str, "Stock ticker symbol, e.g. 'AAPL'"],
-) -> Annotated[str, "Comprehensive research combining news, sentiment, and financials"]:
-    """Research a stock across Finviz, Stocktwits, and Google Search in parallel."""
-    client = _arcade()
-    ticker_upper = ticker.upper()
-
-    finviz_md, stocktwits_md, search_results = await asyncio.gather(
-        asyncio.to_thread(_scrape, client, f"https://finviz.com/quote.ashx?t={ticker_upper}"),
-        asyncio.to_thread(_scrape, client, f"https://stocktwits.com/symbol/{ticker_upper}"),
-        asyncio.to_thread(_search, client, f"{ticker_upper} stock news analysis", 8),
-    )
-
-    sections = []
-
-    if len(finviz_md) > 200:
-        sections.append(f"## Finviz: {ticker_upper}\n\n{finviz_md[:3000]}")
-
-    if len(stocktwits_md) > 200:
-        sections.append(f"## Stocktwits: {ticker_upper}\n\n{stocktwits_md[:3000]}")
-
-    if search_results:
-        sections.append(f"## Web Search: {ticker_upper}\n\n{search_results}")
-
-    if not sections:
-        return f"No data found for {ticker_upper}."
-
-    return "\n\n---\n\n".join(sections)
+    return f"## Finviz News: {ticker_upper}\n\n{content}"
 
 
 @app.tool
 def find_trending_tickers() -> Annotated[str, "Most active and trending stocks right now"]:
-    """Scrape Finviz and Yahoo Finance for the most active and trending tickers today."""
-    client = _arcade()
-    sections = []
-
-    finviz_md = _scrape(client, "https://finviz.com/screener.ashx?v=111&s=ta_topgainers")
-    if len(finviz_md) > 200:
-        sections.append(f"## Finviz Top Gainers\n\n{finviz_md[:3000]}")
-
-    yahoo_md = _scrape(client, "https://finance.yahoo.com/trending-tickers/")
-    if len(yahoo_md) > 200:
-        sections.append(f"## Yahoo Trending Tickers\n\n{yahoo_md[:3000]}")
-
-    return "\n\n---\n\n".join(sections) if sections else "No trending data found."
-
-
-@app.tool
-def general_deep_research(
-    topic: Annotated[str, "Market topic to research, e.g. 'AI semiconductors', 'Fed rates'"] = "stock market today",
-) -> Annotated[str, "Broad market overview from Google Search and Finviz"]:
-    """Get a broad picture of current market trends via Google Search and Finviz market overview."""
-    client = _arcade()
-    sections = []
-
-    search_results = _search(client, topic, 10)
-    if search_results:
-        sections.append(f"## Web Search: {topic}\n\n{search_results}")
-
-    market_md = _scrape(client, "https://finviz.com/map.ashx?t=sec")
-    if len(market_md) > 200:
-        sections.append(f"## Finviz Market Map\n\n{market_md[:3000]}")
-
-    trending_md = _scrape(client, "https://finance.yahoo.com/trending-tickers/")
-    if len(trending_md) > 200:
-        sections.append(f"## Trending Tickers\n\n{trending_md[:2000]}")
-
-    return "\n\n---\n\n".join(sections) if sections else "No market data found."
+    """Scrape Yahoo Finance for the most active and trending tickers today."""
+    content = _scrape(_arcade(), "https://finance.yahoo.com/trending-tickers/")
+    if len(content) < 200:
+        return "No trending data found."
+    return f"## Yahoo Trending Tickers\n\n{content}"

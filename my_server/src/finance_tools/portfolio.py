@@ -133,21 +133,6 @@ def _format_table(data: dict) -> str:
 
 
 @app.tool
-def recalculate_stats() -> Annotated[str, "Confirmation that summary stats were updated"]:
-    """Recalculate and update portfolio summary stats (M2-M7) from current Holdings data."""
-    _write_summary_stats(_get_sheet_data("Holdings"))
-    return "Portfolio stats updated (M2-M7)."
-
-
-@app.tool
-def setup_portfolio() -> Annotated[str, "Confirmation that headers were written"]:
-    """Initialize the Holdings and Transactions tabs with column headers."""
-    _write_rows("Holdings", {"1": _HOLDINGS_HEADERS})
-    _write_rows("Transactions", {"1": _TRANSACTIONS_HEADERS})
-    return "Portfolio sheet initialized with Holdings and Transactions headers."
-
-
-@app.tool
 def read_holdings() -> Annotated[str, "Current portfolio holdings as a Markdown table"]:
     """Read all current holdings from the portfolio Google Sheet."""
     return _format_table(_get_sheet_data("Holdings"))
@@ -195,7 +180,7 @@ def add_holding(
         }
     })
 
-    _write_summary_stats(_get_sheet_data("Holdings"))
+    refresh_portfolio()
     return (
         f"Added {ticker_upper} ({stock['name']}) — "
         f"{shares} shares @ ${avg_cost:.2f} (current: ${current_price:.2f}). "
@@ -204,8 +189,8 @@ def add_holding(
 
 
 @app.tool
-def refresh_prices() -> Annotated[str, "Updated prices and gain/loss for all holdings"]:
-    """Refresh current prices for all holdings and recalculate market value and gain/loss."""
+def refresh_portfolio() -> Annotated[str, "Updated prices and gain/loss for all holdings"]:
+    """Refresh the entire portfolio, fetches live prices for all holdings, recalculates market value and gain/loss, and updates summary stats."""
     data = _get_sheet_data("Holdings")
     if not data:
         return "No holdings to refresh."
