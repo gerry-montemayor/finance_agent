@@ -8,7 +8,7 @@ A stock research and portfolio management agent built with the [Arcade](https://
 
 ## What it does
 
-- **Market research** — real-time stock prices via Google Finance, analyst sentiment, fundamentals and technicals via Finviz, trending tickers via Yahoo Finance, and market/stock news via Google News and MarketWatch
+- **Market research** — real-time stock prices and analyst sentiment via Google Finance, fundamentals and technicals via Finviz, trending tickers via Yahoo Finance, and market/stock news via Google News and MarketWatch
 - **Portfolio management** — track holdings and transactions in a Google Sheet; add, remove, and refresh positions
 - **Terminal agent** — chat with Claude in your terminal; it decides which tools to call and returns a synthesized answer
 
@@ -68,7 +68,7 @@ In the [Arcade dashboard](https://arcade.dev), authorize the following toolkits 
 - **Google Sheets** — required for portfolio tools (read/write holdings and transactions)
 - **Google Finance** — required for live stock prices
 - **Google News** — required for news search
-- **Firecrawl** — required for scraping MarketWatch and Finviz
+- **Firecrawl** — required for scraping MarketWatch, Finviz, and Yahoo Finance
 
 For Google Sheets specifically, the terminal agent will also prompt you to complete the OAuth flow on first run if it detects authorization is missing.
 
@@ -125,7 +125,7 @@ uv run python -m finance_tools.server stdio
 | `get_stock_news` | Recent news headlines for a specific ticker | — |
 | `get_stock_profile` | Full fundamentals and technicals (valuation, growth, Finviz data) | `Firecrawl.ScrapeUrl` |
 | `get_news` | Headlines from Google News and MarketWatch for any topic | `GoogleNews.SearchNewsStories`, `Firecrawl.ScrapeUrl` |
-| `find_trending_tickers` | Most active stocks right now | `Firecrawl.ScrapeUrl` |
+| `find_trending_tickers` | Most active stocks right now (scrapes Yahoo Finance) | `Firecrawl.ScrapeUrl` |
 | `read_holdings` | Current portfolio positions from Google Sheets | `GoogleSheets.GetSpreadsheet` |
 | `add_holding` | Add a position and log the transaction | `GoogleSheets.GetSpreadsheet`, `GoogleSheets.UpdateCells` |
 | `remove_holding` | Remove a position and log the sale | `GoogleSheets.GetSpreadsheet`, `GoogleSheets.UpdateCells`, `GoogleSheets.WriteToCell` |
