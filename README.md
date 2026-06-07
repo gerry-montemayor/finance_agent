@@ -8,7 +8,7 @@ A stock research and portfolio management agent built with the [Arcade](https://
 
 ## What it does
 
-- **Market research** — real-time stock prices via Google Finance, analyst sentiment, trending tickers, and market/stock news via Google News and MarketWatch
+- **Market research** — real-time stock prices via Google Finance, analyst sentiment, fundamentals and technicals via Finviz, trending tickers via Yahoo Finance, and market/stock news via Google News and MarketWatch
 - **Portfolio management** — track holdings and transactions in a Google Sheet; add, remove, and refresh positions
 - **Terminal agent** — chat with Claude in your terminal; it decides which tools to call and returns a synthesized answer
 
@@ -108,13 +108,15 @@ cd my_server
 arcade configure claude
 ```
 
-This automatically updates your Claude Desktop config. Then start the server from the `my_server` directory:
+This automatically updates your Claude Desktop config. Then start the server:
 
 ```bash
 uv run python -m finance_tools.server stdio
 ```
 
 ## Available tools
+
+*`—` = yfinance only (no Arcade toolkit required)*
 
 | Tool | Description | Arcade Tools |
 |---|---|---|
