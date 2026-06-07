@@ -2,9 +2,9 @@
    <img src="agent_architecture.png" width="450" />
 </p>
 
-# Finance Agent
+# Stock Portfolio Agent
 
-A financial research and portfolio management agent built with the [Arcade](https://arcade.dev) tool platform and Claude. Exposes tools as an MCP server (for Claude Desktop or other MCP clients) and includes a standalone terminal agent you can chat with directly.
+A stock research and portfolio management agent built with the [Arcade](https://arcade.dev) tool platform. Exposes tools as an MCP server (for Claude Desktop or other MCP clients) and includes a standalone terminal agent you can chat with directly.
 
 ## What it does
 
@@ -18,11 +18,25 @@ A financial research and portfolio management agent built with the [Arcade](http
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - An [Arcade](https://arcade.dev) account and API key
 - An [Anthropic](https://console.anthropic.com) API key (for the terminal agent)
-- A Google Sheet (see [Google Sheet Setup](#google-sheet-setup) below)
+- A Google Sheet (see step 5 below)
 
 ## Setup
 
-### 1. Clone and install
+### 1. Install the Arcade CLI
+
+```bash
+uv tool install arcade-mcp
+```
+
+### 2. Log in to Arcade
+
+```bash
+arcade login
+```
+
+Follow the browser prompt to connect your terminal to your Arcade account.
+
+### 3. Clone and install
 
 ```bash
 git clone <repo-url>
@@ -30,7 +44,7 @@ cd finance_agent/my_server
 uv sync
 ```
 
-### 2. Configure environment variables
+### 4. Configure environment variables
 
 Copy the example env file and fill in your keys:
 
@@ -47,7 +61,18 @@ ANTHROPIC_API_KEY=     # from console.anthropic.com
 GOOGLE_SHEETS_ID=      # the ID from your Google Sheet URL
 ```
 
-### 3. Set up the Google Sheet
+### 5. Authorize tools in the Arcade platform
+
+In the [Arcade dashboard](https://arcade.dev), authorize the following toolkits before running the agent:
+
+- **Google Sheets** — required for portfolio tools (read/write holdings and transactions)
+- **Google Finance** — required for live stock prices
+- **Google News** — required for news search
+- **Firecrawl** — required for scraping MarketWatch and Finviz
+
+For Google Sheets specifically, the terminal agent will also prompt you to complete the OAuth flow on first run if it detects authorization is missing.
+
+### 6. Set up the Google Sheet
 
 Click the link below to copy the portfolio template to your Google Drive:
 
@@ -60,10 +85,6 @@ https://docs.google.com/spreadsheets/d/THIS_IS_YOUR_SHEET_ID/edit
 ```
 
 Paste that ID as `GOOGLE_SHEETS_ID` in your `.env`.
-
-### 4. Authorize Google Sheets
-
-The first time a portfolio tool runs, Arcade will prompt you to authorize access to your Google account. Follow the link it prints in the terminal to complete the OAuth flow.
 
 ## Running the terminal agent
 
@@ -80,45 +101,34 @@ You can then ask things like:
 
 ## Running as an MCP server
 
-To use the tools inside Claude Desktop or another MCP client, run the server over stdio:
+To use the tools inside Claude Desktop, first register the server with Arcade:
 
 ```bash
 cd my_server
-uv run python -m finance_tools.server
+arcade configure claude
 ```
 
-Or configure it in your Claude Desktop `claude_desktop_config.json`:
+This automatically updates your Claude Desktop config. Then start the server from the `my_server` directory:
 
-```json
-{
-  "mcpServers": {
-    "finance-tools": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/finance_agent/my_server", "python", "-m", "finance_tools.server"],
-      "env": {
-        "ARCADE_API_KEY": "...",
-        "ARCADE_USER_ID": "...",
-        "GOOGLE_SHEETS_ID": "..."
-      }
-    }
-  }
-}
+```bash
+uv run python -m finance_tools.server stdio
 ```
 
 ## Available tools
 
-| Tool | Description |
-|---|---|
-| `get_stock_overview` | Live price and daily change from Google Finance |
-| `get_sentiment` | Analyst consensus rating and score from yfinance |
-| `get_news` | Headlines from Google News and MarketWatch for any topic |
-| `get_stock_news` | Recent news for a specific ticker from Finviz |
-| `find_trending_tickers` | Most active stocks right now from Yahoo Finance |
-| `read_holdings` | Current portfolio positions from Google Sheets |
-| `add_holding` | Add a position and log the transaction |
-| `remove_holding` | Remove a position and log the sale |
-| `refresh_portfolio` | Refresh live prices and recalculate gain/loss for all holdings |
-| `read_transactions` | Full buy/sell transaction history |
+| Tool | Description | Arcade Tools |
+|---|---|---|
+| `get_stock_overview` | Live price, daily change, and recent news for a stock | `GoogleFinance.GetStockSummary` |
+| `get_sentiment` | Analyst consensus rating and score | — |
+| `get_stock_news` | Recent news headlines for a specific ticker | — |
+| `get_stock_profile` | Full fundamentals and technicals (valuation, growth, Finviz data) | `Firecrawl.ScrapeUrl` |
+| `get_news` | Headlines from Google News and MarketWatch for any topic | `GoogleNews.SearchNewsStories`, `Firecrawl.ScrapeUrl` |
+| `find_trending_tickers` | Most active stocks right now | `Firecrawl.ScrapeUrl` |
+| `read_holdings` | Current portfolio positions from Google Sheets | `GoogleSheets.GetSpreadsheet` |
+| `add_holding` | Add a position and log the transaction | `GoogleSheets.GetSpreadsheet`, `GoogleSheets.UpdateCells` |
+| `remove_holding` | Remove a position and log the sale | `GoogleSheets.GetSpreadsheet`, `GoogleSheets.UpdateCells`, `GoogleSheets.WriteToCell` |
+| `refresh_portfolio` | Refresh live prices and recalculate gain/loss for all holdings | `GoogleSheets.GetSpreadsheet`, `GoogleSheets.UpdateCells`, `GoogleSheets.WriteToCell` |
+| `read_transactions` | Full buy/sell transaction history | `GoogleSheets.GetSpreadsheet` |
 
 ## Project structure
 
