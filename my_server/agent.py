@@ -33,6 +33,7 @@ from finance_tools.research import (
     get_sentiment,
     get_stock_news,
     get_stock_overview,
+    get_stock_profile,
 )
 
 SYSTEM_PROMPT = """You are a financial research and portfolio assistant. You help users research stocks, follow market news, and manage their portfolio.
@@ -75,8 +76,19 @@ TOOLS = [
         },
     },
     {
+        "name": "get_stock_profile",
+        "description": "Get a comprehensive stock profile with fundamentals, valuation, growth metrics, earnings date, analyst targets, and Finviz technicals.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string", "description": "Stock ticker symbol, e.g. 'AAPL'"},
+            },
+            "required": ["ticker"],
+        },
+    },
+    {
         "name": "get_stock_news",
-        "description": "Get recent news headlines for a specific stock from Finviz.",
+        "description": "Get recent news headlines for a specific stock from Yahoo Finance.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -137,6 +149,7 @@ TOOLS = [
 
 _TOOL_FN = {
     "get_stock_overview": get_stock_overview,
+    "get_stock_profile": get_stock_profile,
     "get_sentiment": get_sentiment,
     "get_news": get_news,
     "get_stock_news": get_stock_news,
