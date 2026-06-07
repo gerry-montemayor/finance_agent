@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import os
 import sys
+import time
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="yfinance")
@@ -155,11 +156,34 @@ def _call_tool(name: str, inputs: dict) -> str:
     return fn(**inputs)
 
 
+def _ensure_google_auth(console: Console) -> None:
+    import arcadepy
+    arcade = arcadepy.Arcade(api_key=os.environ["ARCADE_API_KEY"])
+    user_id = os.environ["ARCADE_USER_ID"]
+    tool_name = "GoogleSheets.GetSpreadsheet"
+
+    auth = arcade.tools.authorize(tool_name=tool_name, user_id=user_id)
+    if auth.status == "completed":
+        return
+
+    console.print(f"\n[yellow]Google Sheets authorization required.[/yellow]")
+    console.print(f"Open this URL in your browser:\n\n  [bold]{auth.url}[/bold]\n")
+    console.print("Waiting for authorization...", end="")
+    while True:
+        time.sleep(2)
+        auth = arcade.tools.authorize(tool_name=tool_name, user_id=user_id)
+        if auth.status == "completed":
+            console.print(" [green]done.[/green]")
+            break
+        console.print(".", end="", highlight=False)
+
+
 def main():
     console = Console()
     client = anthropic.Anthropic()
     messages = []
 
+    _ensure_google_auth(console)
     console.print(Panel("Finance Agent", subtitle="ask about stocks or your portfolio • 'quit' to exit", style="bold green"))
 
     while True:
